@@ -4,11 +4,13 @@ import Keys._
 object CIlibBuild extends Build {
 
   val buildSettings = Defaults.defaultSettings ++ Seq(
-    scalaVersion := "2.9.2",
+    scalaVersion := "2.10.0",
     version := "0.7.6-SNAPSHOT"
   )
 
-  lazy val root = Project("cilib", file(".")) aggregate(library, simulator) settings (
+  lazy val root = Project(id = "cilib",
+    base = file("."),
+    settings = buildSettings) aggregate(library, simulator) settings (
     headerCheckSetting
   )
 
