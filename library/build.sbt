@@ -15,6 +15,7 @@ publishArtifact in Test := false
 parallelExecution in Test := false
 
 libraryDependencies ++= Seq(
+    "org.scalaz" %% "scalaz-core" % "7.0.0-M8",
     "com.google.guava" % "guava" % "11.0.1",
     "org.parboiled" % "parboiled-core" % "0.11.0",
     "org.parboiled" % "parboiled-java" % "0.11.0",
