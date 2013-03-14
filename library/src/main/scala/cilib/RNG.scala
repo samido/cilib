@@ -1,12 +1,11 @@
 package cilib
 
-import scalaz._, Scalaz._
-
 trait RNG {
+  def seed: Long
   def next(bits: Int): (RNG, Int)
 }
 
-final class CMWC(carry: Long, index: Int, state: Array[Long]) extends RNG {
+final class CMWC(val seed: Long, carry: Long, index: Int, state: Array[Long]) extends RNG {
   private val A = 18782L
 
   def next(bits: Int) = {
@@ -20,7 +19,7 @@ final class CMWC(carry: Long, index: Int, state: Array[Long]) extends RNG {
     s(i) = 0xFFFFFFFEL - (t & 0xFFFFFFFFL) - (newCarry - div32 << 32) - newCarry & 0xFFFFFFFFL
     val result: Long = s(i)
     // n = n + 1 & r - 1;
-    (new CMWC(newCarry, i, s), (result >>> 32 - bits).toInt)
+    (new CMWC(seed, newCarry, i, s), (result >>> 32 - bits).toInt)
   }
 }
 
@@ -37,14 +36,18 @@ object RNG {
     state(2) = seed + PHI + PHI
     (3 until 4096).foreach(x => state(x) = state(x - 3) ^ state(x - 2) ^ PHI ^ x)
 
-    new CMWC(carry, index, state)
+    new CMWC(seed, carry, index, state)
   }
 
-  def nextBits(bits: Int): Rand[Int] = State(rng => rng.next(bits))
+  def split(r: RNG) = (init(r.seed - 1), init(r.seed + 1))
 
-  def nextInt: Rand[Int] = State(rng => rng.next(32))
+  import scalaz._, Scalaz._, StateT._
 
-  def nextDouble: Rand[Double] = for {
+  def nextBits(bits: Int): RNGState[Int] = State((rng: RNG) => rng.next(bits))
+
+  def nextInt: RNGState[Int] = State(rng => rng.next(32))
+
+  def nextDouble: RNGState[Double] = for {
     a <- nextBits(26) // val (a, rng1) = this.next(26)
     b <- nextBits(27) // val (b, rng2) = rng1.next(27)
   } yield ((a.toLong << 27) + b) / (1L << 53).toDouble
@@ -54,10 +57,8 @@ object RNG {
     x <- nextDouble
   } yield a + (b - a) * x
 
-  import Free._
-
   // TODO: This should be an implementation of Doornik's improved ziggurat method!
-  def gaussian(mean: Double = 0.0, variance: Double = 1.0): Rand[Double] = State { rng =>
+  def gaussian(mean: Double = 0.0, variance: Double = 1.0): RNGState[Double] = State { rng =>
     def uniformPair = pair(uniform(), uniform())
 
     def update(x: Double, y: Double, i: Int) = { (rng: RNG) =>
@@ -73,6 +74,8 @@ object RNG {
         (rng1, (x1, y1))
       }
     }
+
+    import Free._
 
     def inner(y: Double): StateT[Trampoline, RNG, Double] = StateT { rng =>
       val (rng1, u) = nextInt(rng)
@@ -111,19 +114,20 @@ object RNG {
     } yield x.sum
   }
 
-  def laplace(b0: Double = 0.0, b1: Double = 1.0) = for {
-    r <- nextDouble
-  } yield {
-    val rr = r - 0.5
-    b0 - b1 * (math.log(1 - 2 * rr.abs)) * rr.signum
-  }
+  def laplace(b0: Double = 0.0, b1: Double = 1.0) =
+    for {
+      r <- nextDouble
+    } yield {
+      val rr = r - 0.5
+      b0 - b1 * (math.log(1 - 2 * rr.abs)) * rr.signum
+    }
 
   def lognormal(mean: Double = 0.0, dev: Double = 1.0) = for {
     z <- gaussian()
   } yield math.exp(mean + dev * z)
 
   // General helpers
-  def sequence[A](n: Int)(f: => Rand[A]): Rand[List[A]] = f replicateM n
+  def sequence[A](n: Int)(f: => RNGState[A]): RNGState[List[A]] = f replicateM n
 
   def ints(n: Int) = nextInt replicateM n
 
@@ -134,12 +138,14 @@ object RNG {
   } yield x * r
 
   import language.higherKinds
-  def rand[F[_]: Traverse](x: F[Double]) = x.traverseU(randDouble)
+  def rand[F[_]: Traverse](x: F[Double]) =
+    x.traverseU(randDouble)
 
-  def pair[A, B](a: Rand[A], b: Rand[B]): Rand[(A, B)] = for {
-    aa <- a
-    bb <- b
-  } yield (aa, bb)
+  def pair[A, B](a: RNGState[A], b: RNGState[B]): RNGState[(A, B)] =
+    for {
+      aa <- a
+      bb <- b
+    } yield (aa, bb)
 
   // Constants related to the gaussian number generation
   private[this] val PARAM_R = 3.44428647676 // position of right-most step

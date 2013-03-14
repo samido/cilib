@@ -10,20 +10,23 @@ scalacOptions += "-deprecation"
 
 parallelExecution in Test := false
 
-mainClass := Some("net.sourceforge.cilib.simulator.Main")
+mainClass := Some("simulator.Main")
 
 libraryDependencies ++= Seq(
-    "junit" % "junit" % "4.10" % "test",
-    "com.novocode" % "junit-interface" % "0.5" % "test",
+    "com.novocode" % "junit-interface" % "0.10-M1" % "test",
     "org.mockito" % "mockito-all" % "1.8.4" % "test",
     "org.hamcrest" % "hamcrest-all" % "1.1" % "test"
 )
 
 autoScalaLibrary := false
 
-// Handle the scala compiler dependency
-//libraryDependencies <<= (scalaVersion, libraryDependencies) { (sv, deps) =>
-//    deps :+ ("org.scala-lang" % "scala-compiler" % sv)
-//}
+libraryDependencies <<= (scalaVersion, libraryDependencies) { (sv, deps) =>
+  deps :+ ("org.scala-lang" % "scala-compiler" % sv) :+ ("org.scala-lang" % "jline" % sv)
+}
+
+// jansi is already packaged up inside org.scala-lang/jline
+excludedJars in assembly <<= (fullClasspath in assembly) map { cp =>
+  cp filter { c => List("jansi") exists { c.data.getName contains _ } }
+}
 
 resourceDirectory in Test <<= baseDirectory { _ / "simulator" }

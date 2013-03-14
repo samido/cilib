@@ -15,24 +15,26 @@ publishArtifact in Test := false
 parallelExecution in Test := false
 
 libraryDependencies ++= Seq(
-    "org.scalaz" %% "scalaz-core" % "7.0.0-M8",
-    "com.google.guava" % "guava" % "11.0.1",
-    "org.parboiled" % "parboiled-core" % "0.11.0",
-    "org.parboiled" % "parboiled-java" % "0.11.0",
-    "org.functionaljava" % "functionaljava" % "3.1",
-    "junit" % "junit" % "4.10" % "test",
-    "org.mockito" % "mockito-all" % "1.8.4" % "test",
-    "org.hamcrest" % "hamcrest-all" % "1.1" % "test",
-    "com.novocode" % "junit-interface" % "0.10-M1" % "test"
+  "org.scalaz" %% "scalaz-core" % "7.0-SNAPSHOT",
+  "com.google.guava" % "guava" % "11.0.1",
+  "org.parboiled" % "parboiled-core" % "0.11.0",
+  "org.parboiled" % "parboiled-java" % "0.11.0",
+  "org.functionaljava" % "functionaljava" % "3.1",
+  "org.mockito" % "mockito-all" % "1.8.4" % "test",
+  "org.hamcrest" % "hamcrest-all" % "1.1" % "test",
+  "com.novocode" % "junit-interface" % "0.10-M1" % "test",
+  "org.scalacheck" %% "scalacheck" % "1.10.0" % "test"
 )
 
 javacOptions ++= Seq("-encoding", "UTF8", "-source", "1.7", "-target", "1.7")
 
 javacOptions in doc := Seq("-source", "1.7")
 
-scalacOptions += "-deprecation"
+scalacOptions ++= Seq("-deprecation", "-feature")
 
 crossPaths := false
+
+initialCommands in console := "import scalaz._, Scalaz._, cilib._"
 
 // Related settings to allow for publishing of maven style artifacts
 publishMavenStyle := true
@@ -91,4 +93,3 @@ pomExtra := (
     <url>http://github.com/kgeorgieva</url>
   </developer>
 </developers>)
-
